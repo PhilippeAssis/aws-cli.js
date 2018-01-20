@@ -4,15 +4,25 @@ const Aws = awsCli.Aws
 
 awsCli.Aws = class ChildClass extends Aws {
   constructor(options) {
-    const { debug, prefixDebug } = options || {}
+    const { debug, suffixDebug, prefixDebug } = options || {}
 
     super(options)
 
     this.debug = debug
     this.prefixDebug = prefixDebug || 'aws-cli:'
+    this.suffixDebug = suffixDebug || '...'
+    this.resource = ''
   }
 
-  command(functionName, resouceName, params, callback) {
+  setResource(resource){
+    this.resource = resource+' '
+  }
+
+  removeResource(){
+    this.resource = ''
+  }
+
+  command(functionName, params, callback) {
     if (typeof params === 'object') {
       params = toArgs(params).join(' ')
       functionName = `${functionName} ${params}`
@@ -21,10 +31,25 @@ awsCli.Aws = class ChildClass extends Aws {
     }
 
     if (this.debug) {
-      console.log(this.prefixDebug, functionName)
+      console.log(this.prefixDebug, functionName, this.suffixDebug)
     }
 
-    super.command(functionName, callback)
+    functionName = this.resource + functionName
+
+    if(callback){
+      return super.command(functionName, callback)
+    }
+
+    return new Promise((resolve, reject) => {
+      super.command(functionName, (err, data) => {
+        if (err) {
+          return reject(err)
+        }
+
+        resolve(data)
+      })
+    })
+
   }
 }
 
