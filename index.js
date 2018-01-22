@@ -1,12 +1,9 @@
-const awsCli = require('aws-cli-js')
+const { exec } = require('child_process')
 const toArgs = require('object-to-spawn-args')
-const Aws = awsCli.Aws
 
-awsCli.Aws = class ChildClass extends Aws {
+module.exports = class AwsCli {
   constructor(options) {
     const { debug, suffixDebug, prefixDebug } = options || {}
-
-    super(options)
 
     this.debug = debug
     this.prefixDebug = prefixDebug || 'aws-cli:'
@@ -22,36 +19,26 @@ awsCli.Aws = class ChildClass extends Aws {
     this.resource = ''
   }
 
-  command(functionName, params, callback) {
+  command(functionName, params) {
     if (typeof params === 'object') {
       params = toArgs(params).join(' ')
       functionName = `${functionName} ${params}`
-    } else {
-      callback = params
     }
+
+    functionName = 'aws ' + this.resource + functionName
 
     if (this.debug) {
       console.log(this.prefixDebug, functionName, this.suffixDebug)
     }
 
-    functionName = this.resource + functionName
-
-    if(callback){
-      return super.command(functionName, callback)
-    }
-
     return new Promise((resolve, reject) => {
-      super.command(functionName, (err, data) => {
+      exec(functionName, (err, stdout, stderr) => {
         if (err) {
           return reject(err)
         }
 
-        resolve(data)
+        resolve(JSON.parse(stdout) || stderr)
       })
     })
-
   }
 }
-
-
-module.exports = awsCli
